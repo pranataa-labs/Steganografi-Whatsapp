@@ -103,20 +103,19 @@ Semua aset citra dan visualisasi telah ditata rapi di dalam direktori `assets/`:
 ```text
 ├── assets/                               # Direktori aset gambar & visualisasi
 │   ├── cover_image.png                   # Citra cover asli (lossless PNG)
-│   ├── cover_image.jpg                   # Citra format JPEG asli
 │   ├── stego_image.png                   # Citra stego hasil penyisipan payload
 │   ├── visualisasi_komparasi_stego.png   # Plot perbandingan citra & peta residual
 │   └── grafik_analisis_kompresi_whatsapp.png # Grafik kurva PSNR vs Bit Error Rate
 ├── steganografi_whatsapp_analisis.ipynb  # Notebook analisis komprehensif
 ├── stego_core.py                         # Modul Python inti (AES-256-GCM, LSB, Metrik)
-├── build_notebook.py                     # Script otomatis pembangun notebook
 ├── requirements.txt                      # Daftar dependensi Python
 ├── tests/                                # Test suite TDD (18 unit tests)
 │   ├── test_crypto.py
 │   ├── test_stego.py
 │   ├── test_metrics.py
 │   └── test_notebook_execution.py
-└── docs/superpowers/                     # Dokumentasi spesifikasi desain & rencana kerja
+├── README.md                             # Dokumentasi proyek
+└── .gitignore                            # Git ignore rules
 ```
 
 ---
