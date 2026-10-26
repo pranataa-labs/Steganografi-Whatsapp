@@ -26,7 +26,7 @@ cells.append(nbf.v4.new_markdown_cell(r"""# Implementasi Steganografi Digital Te
 
 **Penulis:** Pranataa Lab & AI Research Assistant  
 **Lingkungan:** Python 3.12 | Jupyter Notebook  
-**Cover Image:** `cover_image.png` (736 $\times$ 919 piksel RGB)
+**Cover Image:** `assets/cover_image.png` (736 $\times$ 919 piksel RGB)
 
 ---
 
@@ -227,7 +227,7 @@ Kita akan memeriksa resolusi spasial, menghitung kapasitas muatan maksimal, meny
 """))
 
 cells.append(nbf.v4.new_code_cell(r"""# 1. Memuat cover image
-cover_image_path = "cover_image.png"
+cover_image_path = "assets/cover_image.png"
 cover_img = load_image(cover_image_path)
 tinggi, lebar, kanal = cover_img.shape
 
@@ -256,7 +256,7 @@ cells.append(nbf.v4.new_code_cell(r"""# 3. Proses Embedding Payload ke dalam Cit
 stego_img = embed_payload_lsb(cover_img, payload_terenkripsi)
 
 # 4. Simpan citra stego ke dalam format lossless PNG
-stego_image_path = "stego_image.png"
+stego_image_path = "assets/stego_image.png"
 save_stego_image(stego_img, stego_image_path)
 print(f"[V] Citra stego berhasil disimpan ke: {stego_image_path}")
 
@@ -353,10 +353,10 @@ axes[2].set_title("3. Peta Residual Selisih Piksel (|Cover - Stego| x 30)\n(Hany
 axes[2].axis("off")
 
 plt.tight_layout()
-plt.savefig("visualisasi_komparasi_stego.png", dpi=150, bbox_inches="tight")
+plt.savefig("assets/visualisasi_komparasi_stego.png", dpi=150, bbox_inches="tight")
 plt.show()
 
-print("[V] Gambar visualisasi komparasi disimpan sebagai: visualisasi_komparasi_stego.png")
+print("[V] Gambar visualisasi komparasi disimpan sebagai: assets/visualisasi_komparasi_stego.png")
 """))
 
 cells.append(nbf.v4.new_code_cell(r"""# Analisis Histogram Distribusi Intensitas Kanal Warna
@@ -403,13 +403,13 @@ Ketika mengirimkan citra stego kepada rekan Anda melalui WhatsApp, **metode peng
 |     1. Buka ruang obrolan penerima di WhatsApp.                                         |
 |     2. Tekan ikon tanda tambah (+) atau klip kertas (Attachment).                       |
 |     3. Pilih menu "Dokumen" (Bukan "Foto & Video").                                     |
-|     4. Pilih file "stego_image.png".                                                    |
+|     4. Pilih file "assets/stego_image.png".                                             |
 |     5. Kirim file.                                                                      |
 +-----------------------------------------------------------------------------------------+
 ```
 
 > **Verifikasi Integritas di Sisi Penerima:**  
-> Sebelum mengekstrak, penerima mengunduh dokumen `stego_image.png`, lalu memverifikasi *hash* SHA-256 miliknya dengan nilai *hash* yang dikirim pengirim. Jika nilainya cocok, penerima dipastikan 100% memegang file murni tanpa korupsi byte.
+> Sebelum mengekstrak, penerima mengunduh dokumen `assets/stego_image.png`, lalu memverifikasi *hash* SHA-256 miliknya dengan nilai *hash* yang dikirim pengirim. Jika nilainya cocok, penerima dipastikan 100% memegang file murni tanpa korupsi byte.
 """))
 
 cells.append(nbf.v4.new_markdown_cell(r"""### 5.2 Eksperimen Stres: Apa yang Terjadi Jika Dikirim sebagai "Foto" WhatsApp?
@@ -512,10 +512,10 @@ ax1.legend(lines, labels, loc='center right')
 
 plt.title("Analisis Kerentanan LSB: Kompresi JPEG Mengakibatkan Lonjakan Korupsi Bit (BER > 40%)", fontsize=11, fontweight='bold')
 plt.tight_layout()
-plt.savefig("grafik_analisis_kompresi_whatsapp.png", dpi=150, bbox_inches="tight")
+plt.savefig("assets/grafik_analisis_kompresi_whatsapp.png", dpi=150, bbox_inches="tight")
 plt.show()
 
-print("[V] Grafik analisis kompresi disimpan sebagai: grafik_analisis_kompresi_whatsapp.png")
+print("[V] Grafik analisis kompresi disimpan sebagai: assets/grafik_analisis_kompresi_whatsapp.png")
 """))
 
 cells.append(nbf.v4.new_markdown_cell(r"""### 5.3 Analisis Komparasi Teori: Domain Spasial (LSB) vs Domain Frekuensi (DCT / DWT)
