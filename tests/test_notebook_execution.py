@@ -15,3 +15,9 @@ def test_cover_image_exists():
 def test_output_artifacts_generated():
     stego_path = Path("stego_image.png")
     assert stego_path.exists(), "File stego_image.png harus terbentuk dari eksekusi steganografi"
+    
+    vis_path = Path("visualisasi_komparasi_stego.png")
+    assert vis_path.exists(), "File visualisasi_komparasi_stego.png harus terbentuk"
+    
+    grafik_path = Path("grafik_analisis_kompresi_whatsapp.png")
+    assert grafik_path.exists(), "File grafik_analisis_kompresi_whatsapp.png harus terbentuk"

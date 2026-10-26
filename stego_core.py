@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import os
 import struct
-from typing import Tuple
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
@@ -85,9 +84,10 @@ def decrypt_message(payload: bytes, password: str) -> str:
     (ciphertext_len,) = struct.unpack(">I", payload[offset : offset + 4])
     offset += 4
 
+    if len(payload) != offset + ciphertext_len:
+        raise ValueError("Panjang payload tidak sesuai dengan metadata header.")
+
     ciphertext_and_tag = payload[offset : offset + ciphertext_len]
-    if len(ciphertext_and_tag) != ciphertext_len:
-        raise ValueError("Panjang ciphertext tidak sesuai dengan metadata header.")
 
     key = derive_key(password, salt)
     aesgcm = AESGCM(key)
@@ -122,7 +122,7 @@ def _standardize_rgb_image(image: np.ndarray) -> np.ndarray:
         img = np.stack([img, img, img], axis=-1)
     elif img.ndim == 3 and img.shape[2] == 4:
         # RGBA -> RGB (abaikan kanal alpha)
-        img = img[:, :, :3]
+        img = np.ascontiguousarray(img[:, :, :3])
     elif img.ndim != 3 or img.shape[2] != 3:
         raise ValueError(f"Dimensi citra tidak didukung: {img.shape}")
 
