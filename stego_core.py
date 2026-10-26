@@ -49,7 +49,6 @@ def encrypt_message(plaintext: str, password: str) -> bytes:
     key = derive_key(password, salt)
 
     aesgcm = AESGCM(key)
-    # Magic header dijadikan associated_data agar tidak dapat dipalsukan
     ciphertext_and_tag = aesgcm.encrypt(nonce, plaintext.encode("utf-8"), associated_data=MAGIC_HEADER)
     ciphertext_len = len(ciphertext_and_tag)
 
@@ -91,6 +90,119 @@ def decrypt_message(payload: bytes, password: str) -> str:
     key = derive_key(password, salt)
     aesgcm = AESGCM(key)
 
-    # Akan memunculkan InvalidTag exception jika password salah atau data termodifikasi/terkompresi
     plaintext_bytes = aesgcm.decrypt(nonce, ciphertext_and_tag, associated_data=MAGIC_HEADER)
     return plaintext_bytes.decode("utf-8")
+
+
+# ----------------------------------------------------------------------
+# Mesin Steganografi Spasial LSB (Least Significant Bit)
+# ----------------------------------------------------------------------
+
+def calculate_capacity(image_shape: tuple[int, ...]) -> int:
+    """Menghitung kapasitas maksimum data (dalam byte) yang dapat ditampung
+
+    oleh citra dengan menyisipkan 1 bit pada setiap kanal warna piksel.
+    """
+    total_samples = int(np.prod(image_shape[:2]))
+    channels = image_shape[2] if len(image_shape) > 2 else 1
+    total_bits = total_samples * channels
+    return total_bits // 8
+
+
+def _standardize_rgb_image(image: np.ndarray) -> np.ndarray:
+    """Memastikan citra berformat 3 kanal warna RGB (uint8)."""
+    if not isinstance(image, np.ndarray):
+        raise TypeError("Citra harus berupa numpy ndarray.")
+
+    img = image.copy()
+    if img.ndim == 2:
+        # Grayscale -> RGB
+        img = np.stack([img, img, img], axis=-1)
+    elif img.ndim == 3 and img.shape[2] == 4:
+        # RGBA -> RGB (abaikan kanal alpha)
+        img = img[:, :, :3]
+    elif img.ndim != 3 or img.shape[2] != 3:
+        raise ValueError(f"Dimensi citra tidak didukung: {img.shape}")
+
+    if img.dtype != np.uint8:
+        img = np.clip(img, 0, 255).astype(np.uint8)
+
+    return img
+
+
+def embed_payload_lsb(image: np.ndarray, payload: bytes) -> np.ndarray:
+    """Menyisipkan payload biner ke dalam bit LSB kanal RGB citra secara sekuensial.
+
+    Struktur bit yang disisipkan:
+    [4 Bytes Panjang Payload (32-bit big endian)] + [N Bytes Payload]
+    """
+    img = _standardize_rgb_image(image)
+    max_bytes = calculate_capacity(img.shape)
+
+    # 4 byte dialokasikan untuk menyimpan panjang total payload
+    required_bytes = 4 + len(payload)
+    if required_bytes > max_bytes:
+        raise ValueError(
+            f"Kapasitas gambar tidak mencukupi! "
+            f"Dibutuhkan {required_bytes} bytes, kapasitas maksimum citra {max_bytes} bytes."
+        )
+
+    # Susun paket: 4B panjang payload + payload
+    packet = struct.pack(">I", len(payload)) + payload
+    packet_array = np.frombuffer(packet, dtype=np.uint8)
+    bits = np.unpackbits(packet_array)
+    num_bits = len(bits)
+
+    # Flatten citra untuk mempermudah manipulasi LSB tervektorisasi
+    flat_img = img.reshape(-1)
+    flat_img[:num_bits] = (flat_img[:num_bits] & np.uint8(0xFE)) | bits.astype(np.uint8)
+
+    return flat_img.reshape(img.shape)
+
+
+def extract_payload_lsb(stego_image: np.ndarray) -> bytes:
+    """Mengekstrak payload biner dari bit LSB kanal RGB citra stego."""
+    img = _standardize_rgb_image(stego_image)
+    flat_img = img.reshape(-1)
+
+    if len(flat_img) < 32:
+        raise ValueError("Ukuran citra terlalu kecil untuk steganografi.")
+
+    # 1. Ekstrak 32 bit pertama untuk mengetahui panjang payload
+    len_bits = flat_img[:32] & 1
+    len_bytes = np.packbits(len_bits).tobytes()
+    (payload_len,) = struct.unpack(">I", len_bytes)
+
+    # Validasi batas kewajaran panjang payload
+    max_possible_payload = (len(flat_img) - 32) // 8
+    if payload_len < MIN_PAYLOAD_SIZE or payload_len > max_possible_payload:
+        raise ValueError(
+            f"Header magic steganografi tidak valid atau panjang payload rusak ({payload_len} bytes)."
+        )
+
+    # 2. Ekstrak bit payload sebanyak (payload_len * 8)
+    num_payload_bits = payload_len * 8
+    payload_bits = flat_img[32 : 32 + num_payload_bits] & 1
+    payload = np.packbits(payload_bits).tobytes()
+
+    # 3. Validasi magic header
+    if payload[: len(MAGIC_HEADER)] != MAGIC_HEADER:
+        raise ValueError("Header magic steganografi tidak valid. Citra tidak memuat pesan stego yang sah.")
+
+    return payload
+
+
+def save_stego_image(stego_image: np.ndarray, filepath: str) -> None:
+    """Menyimpan citra stego ke dalam format file PNG murni (lossless)."""
+    img = _standardize_rgb_image(stego_image)
+    pil_img = Image.fromarray(img)
+    pil_img.save(filepath, format="PNG")
+
+
+def load_image(filepath: str) -> np.ndarray:
+    """Memuat file citra dari disk dan mengembalikannya sebagai array RGB uint8."""
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f"File citra tidak ditemukan: {filepath}")
+    with Image.open(filepath) as pil_img:
+        rgb_img = pil_img.convert("RGB")
+        return np.array(rgb_img, dtype=np.uint8)
