@@ -13,6 +13,8 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 import numpy as np
 from PIL import Image
+import io
+from skimage.metrics import structural_similarity as ssim_func
 
 # Magic identifier 4-byte untuk menandai payload steganografi
 MAGIC_HEADER = b"STEG"
@@ -206,3 +208,66 @@ def load_image(filepath: str) -> np.ndarray:
     with Image.open(filepath) as pil_img:
         rgb_img = pil_img.convert("RGB")
         return np.array(rgb_img, dtype=np.uint8)
+
+
+# ----------------------------------------------------------------------
+# Modul Evaluasi Kualitas Citra & Simulasi Kompresi WhatsApp
+# ----------------------------------------------------------------------
+
+def compute_mse(img1: np.ndarray, img2: np.ndarray) -> float:
+    """Menghitung Mean Squared Error (MSE) antara dua citra RGB."""
+    i1 = _standardize_rgb_image(img1).astype(np.float64)
+    i2 = _standardize_rgb_image(img2).astype(np.float64)
+    mse = np.mean((i1 - i2) ** 2)
+    return float(mse)
+
+
+def compute_psnr(img1: np.ndarray, img2: np.ndarray) -> float:
+    """Menghitung Peak Signal-to-Noise Ratio (PSNR) dalam satuan desibel (dB).
+
+    Jika kedua citra identik (MSE = 0), mengembalikan float('inf').
+    """
+    mse = compute_mse(img1, img2)
+    if mse == 0.0:
+        return float("inf")
+    return float(10.0 * np.log10((255.0 ** 2) / mse))
+
+
+def compute_ssim(img1: np.ndarray, img2: np.ndarray) -> float:
+    """Menghitung Structural Similarity Index (SSIM) antara dua citra RGB."""
+    i1 = _standardize_rgb_image(img1)
+    i2 = _standardize_rgb_image(img2)
+    score = ssim_func(i1, i2, channel_axis=2, data_range=255)
+    return float(score)
+
+
+def compute_ber(original_data: bytes, received_data: bytes) -> float:
+    """Menghitung Bit Error Rate (BER) dalam persentase antara dua stream data biner."""
+    if not original_data and not received_data:
+        return 0.0
+
+    b1 = np.unpackbits(np.frombuffer(original_data, dtype=np.uint8))
+    b2 = np.unpackbits(np.frombuffer(received_data, dtype=np.uint8))
+
+    min_len = min(len(b1), len(b2))
+    max_len = max(len(b1), len(b2))
+
+    # Bit mismatch pada irisan panjang yang sama
+    errors = int(np.count_nonzero(b1[:min_len] != b2[:min_len]))
+    # Penalti untuk bit yang hilang/berlebih
+    errors += (max_len - min_len)
+
+    return float((errors / max_len) * 100.0)
+
+
+def simulate_jpeg_compression(image: np.ndarray, quality: int = 75) -> np.ndarray:
+    """Mensimulasikan kompresi lossy JPEG seperti yang dilakukan WhatsApp pada mode Foto/Galeri."""
+    img = _standardize_rgb_image(image)
+    pil_img = Image.fromarray(img)
+    buffer = io.BytesIO()
+    pil_img.save(buffer, format="JPEG", quality=quality)
+    buffer.seek(0)
+    with Image.open(buffer) as comp_pil:
+        comp_rgb = comp_pil.convert("RGB")
+        return np.array(comp_rgb, dtype=np.uint8)
+
